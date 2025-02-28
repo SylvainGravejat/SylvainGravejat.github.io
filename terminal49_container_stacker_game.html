@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal49 Container Stacker</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&display=swap');
+        
+        :root {
+            --primary: #26D970;
+            --primary-dark: #1eb85e;
+            --secondary: #2c5282;
+            --bg-dark: #1a1c22;
+            --bg-medium: #282c34;
+            --bg-light: #3c4049;
+            --text-light: #f0f4f8;
+            --danger: #ff6b6b;
+            --blue: #54a0ff;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            --crane-color: #607D8B;
+            --crane-dark: #455A64;
+            --crane-light: #90A4AE;
+            --crane-accent: #FFB74D;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            background: radial-gradient(circle at center, #323644 0%, #1a1c22 100%);
+            color: var(--text-light);
+            font-family: 'Exo 2', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Background decoration - port silhouette */
+        .port-background {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background-image: url("data:image/svg+xml,%3Csvg width='1200' height='200' viewBox='0 0 1200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 200H1200V170C1150 170 1130 150 1100 150C1070 150 1050 160 1030 160C1000 160 980 145 960 145C930 145 920 155 890 155C870 155 860 140 830 140C800 140 790 160 760 160C730 160 720 145 690 145C670 145 660 165 630 165C600 165 590 150 560 150C540 150 510 170 490 170C460 170 450 155 420 155C390 155 380 165 350 165C320 165 310 140 280 140C250 140 240 160 210 160C180 160 170 150 140 150C120 150 110 165 80 165C50 165 40 140 10 140C-10 140 -20 160 -50 160V200H0Z' fill='rgba(26, 28, 34, 0.8)'/%3E%3Cpath d='M90 140V110H110V140' stroke='%23323644' stroke-width='3'/%3E%3Cpath d='M140 140V100H180V140' stroke='%23323644' stroke-width='6'/%3E%3Cpath d='M240 140V90H280V140' stroke='%23323644' stroke-width='4'/%3E%3Cpath d='M340 140V80H360V140' stroke='%23323644' stroke-width='5'/%3E%3Cpath d='M440 140V90H470V140' stroke='%23323644' stroke-width='4'/%3E%3Cpath d='M540 140V70H600V140' stroke='%23323644' stroke-width='6'/%3E%3Cpath d='M670 140V100H700V140' stroke='%23323644' stroke-width='3'/%3E%3Cpath d='M780 140V80H830V140' stroke='%23323644' stroke-width='5'/%3E%3Cpath d='M900 140V110H930V140' stroke='%23323644' stroke-width='4'/%3E%3Cpath d='M1000 140V90H1050V140' stroke='%23323644' stroke-width='6'/%3E%3Cpath d='M1100 140V100H1120V140' stroke='%23323644' stroke-width='3'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-position: bottom;
+            z-index: -1;
+            opacity: 0.8;
+        }
+        
+        /* Main container */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px;
+            padding: 20px;
+            z-index: 1;
+        }
+        
+        /* Header */
+        h1 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-shadow: 0 0 15px rgba(38, 217, 112, 0.4);
+            text-align: center;
+            position: relative;
+            padding-bottom: 10px;
+            z-index: 2;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, var(--primary), transparent);
+        }
+        
+        /* Game container */
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            position: relative;
+            margin: 20px 0;
+            z-index: 2;
+        }
+        
+        #game-board {
+            border: 4px solid #3c4049;
+            background-color: rgba(28, 30, 36, 0.8);
+            box-shadow: var(--shadow), 0 0 20px rgba(38, 217, 112, 0.2);
+            width: 580px;
+            height: 495px;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Gantry Crane */
+        .gantry-crane-container {
+            position: absolute;
+            top: 12px; /* Add space between difficulty buttons and crane */
+            left: 0;
+            width: 580px;
+            height: 495px;
+            pointer-events: none;
+            z-index: 2;
+            overflow: visible;
+        }
+        
+        .gantry-crane {
+            position: absolute;
+            top: -40px;
+            width: 60px;
+            height: 40px;
+            transform: translateX(-50%);
+            transition: left 0.1s ease;
+        }
+        
+        .crane-cable {
+            position: absolute;
+            top: -10px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.7);
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+        
+        /* Grid overlay for game board */
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        /* Side panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 180px;
+        }
+        
+        .info-panel {
+            width: 100%;
+            background: linear-gradient(145deg, #323644, #2a2e38);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border: 1px solid #444a57;
+        }
+        
+        .score-display, .level-display, .lines-display {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .score-display:last-child, .level-display:last-child, .lines-display:last-child {
+            margin-bottom: 0;
+        }
+        
+        h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        h3 i {
+            font-size: 0.9rem;
+        }
+        
+        #score, #level, #lines {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Difficulty selector */
+        .difficulty-selector {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
+            z-index: 2;
+        }
+        
+        /* Button styles */
+        button {
+            background: linear-gradient(to bottom, var(--primary), var(--primary-dark));
+            color: var(--bg-dark);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(30, 184, 94, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 184, 94, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(30, 184, 94, 0.2);
+        }
+        
+        .difficulty-button {
+            background: linear-gradient(to bottom, #3c4049, #323644);
+            color: var(--text-light);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            min-width: auto;
+            padding: 8px 16px;
+        }
+        
+        .difficulty-button:hover {
+            background: linear-gradient(to bottom, #444a57, #3a3f4b);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .difficulty-button.selected {
+            background: linear-gradient(to bottom, var(--secondary), #1e3a5f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(44, 82, 130, 0.3);
+        }
+        
+        /* Terminal49 logo */
+        .terminal49-logo {
+            color: var(--primary);
+            font-weight: bold;
+            padding: 0 5px;
+            margin: 0;
+            border-radius: 3px;
+            background-color: rgba(38, 217, 112, 0.1);
+            position: relative;
+            display: inline-block;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .terminal49-logo:hover {
+            background-color: rgba(38, 217, 112, 0.2);
+            text-decoration: none;
+            color: #30E980;
+        }
+        
+        /* Game over overlay */
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+            border-radius: 10px;
+        }
+        
+        .game-over-text {
+            font-size: 3rem;
+            color: var(--danger);
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.7);
+            font-weight: 700;
+        }
+        
+        .final-score {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: var(--text-light);
+        }
+        
+        .restart-button {
+            background: linear-gradient(to bottom, var(--danger), #e55c5c);
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .restart-button:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        /* Controls section */
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+            max-width: 600px;
+            background: rgba(60, 64, 73, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 2;
+        }
+        
+        kbd {
+            background-color: #3c4049;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #61dafb;
+            font-family: monospace;
+            box-shadow: 0 2px 0 #2a2e38;
+            margin: 0 2px;
+            display: inline-block;
+            font-size: 0.9rem;
+            min-width: 22px;
+            text-align: center;
+        }
+        
+        /* Floating containers background effect */
+        .floating-containers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .container {
+            position: absolute;
+            width: 60px;
+            height: 25px;
+            background-color: rgba(38, 217, 112, 0.1);
+            border: 2px solid rgba(38, 217, 112, 0.2);
+            border-radius: 3px;
+            animation: float 15s linear infinite;
+            opacity: 0.5;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.5;
+            }
+            90% {
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 850px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .side-panel {
+                flex-direction: row;
+                width: 100%;
+                max-width: 580px;
+                margin-top: 20px;
+            }
+            
+            .info-panel {
+                flex: 1;
+            }
+            
+            .button-group {
+                display: flex;
+                flex-direction: column;
+                gap: 50px;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 620px) {
+            #game-board {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 580/495;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 15px;
+            }
+            
+            .difficulty-selector {
+                flex-wrap: wrap;
+            }
+            
+            .side-panel {
+                flex-direction: column;
+            }
+            
+            .gantry-crane-container {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating container background effect -->
+    <div class="floating-containers">
+        <div class="container" style="left: 10%; animation-duration: 20s; animation-delay: 0s;"></div>
+        <div class="container" style="left: 25%; animation-duration: 24s; animation-delay: 5s;"></div>
+        <div class="container" style="left: 40%; animation-duration: 18s; animation-delay: 2s;"></div>
+        <div class="container" style="left: 60%; animation-duration: 22s; animation-delay: 8s;"></div>
+        <div class="container" style="left: 75%; animation-duration: 25s; animation-delay: 1s;"></div>
+        <div class="container" style="left: 85%; animation-duration: 19s; animation-delay: 6s;"></div>
+    </div>
+    
+    <!-- Port background silhouette -->
+    <div class="port-background"></div>
+    
+    <div class="main-container">
+        <h1>Terminal49 Container Stacker</h1>
+        
+        <div class="difficulty-selector">
+            <button class="difficulty-button" data-difficulty="hard"><i class="fas fa-skull"></i> Hard</button>
+            <button class="difficulty-button" data-difficulty="medium"><i class="fas fa-balance-scale"></i> Medium</button>
+            <button class="difficulty-button" data-difficulty="easy"><i class="fas fa-smile"></i> Easy</button>
+        </div>
+        
+        <div class="game-container">
+            <div style="position: relative;">
+                <canvas id="game-board" width="580" height="495"></canvas>
+                
+                <!-- Gantry Crane Container -->
+                <div class="gantry-crane-container">
+                    <svg class="gantry-crane" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="60" height="40">
+                        <!-- Main Gantry Structure -->
+                        <rect x="0" y="5" width="60" height="7" fill="#607D8B" rx="2" />
+                        <rect x="3" y="12" width="54" height="3" fill="#455A64" />
+                        
+                        <!-- Left Support -->
+                        <rect x="5" y="5" width="4" height="20" fill="#455A64" />
+                        <rect x="9" y="5" width="2" height="20" fill="#607D8B" />
+                        
+                        <!-- Right Support -->
+                        <rect x="51" y="5" width="4" height="20" fill="#455A64" />
+                        <rect x="49" y="5" width="2" height="20" fill="#607D8B" />
+                        
+                        <!-- Trolley (centered) -->
+                        <rect x="20" y="15" width="20" height="10" fill="#90A4AE" rx="2" />
+                        <rect x="25" y="25" width="10" height="5" fill="#455A64" />
+                        
+                        <!-- Operator Cab -->
+                        <rect x="15" y="0" width="30" height="5" fill="#90A4AE" rx="1" />
+                        
+                        <!-- Trolley Details -->
+                        <rect x="23" y="17" width="14" height="2" fill="#FFB74D" />
+                        <rect x="23" y="21" width="14" height="2" fill="#FFB74D" />
+                    </svg>
+                    <div class="crane-cable"></div>
+                </div>
+            </div>
+            
+            <div class="side-panel">
+                <div class="info-panel">
+                    <div class="score-display">
+                        <h3><i class="fas fa-star"></i> Score</h3>
+                        <div id="score">0</div>
+                    </div>
+                    
+                    <div class="level-display">
+                        <h3><i class="fas fa-signal"></i> Level</h3>
+                        <div id="level">1</div>
+                    </div>
+                    
+                    <div class="lines-display">
+                        <h3><i class="fas fa-layer-group"></i> Lines</h3>
+                        <div id="lines">0</div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="start-button" style="margin-bottom: 15px;"><i class="fas fa-play"></i> New Game</button>
+                    <button id="pause-button"><i class="fas fa-pause"></i> Pause</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <p>Use <kbd>←</kbd> <kbd>→</kbd> to move, <kbd>↓</kbd> to soft drop, <kbd>Space</kbd> to hard drop</p>
+            <p><strong>Your untracked containers fade away and become difficult to manage. Containers tracked by <a href="https://www.terminal49.com/" target="_blank" class="terminal49-logo">Terminal49</a> always remain visible.</strong></p>
+        </div>
+    </div>
+    
+    <div class="game-over-overlay" id="game-over">
+        <div class="game-over-text">Game Over!</div>
+        <div class="final-score">Final Score: <span id="final-score">0</span></div>
+        <button class="restart-button" id="restart-button"><i class="fas fa-redo"></i> Play Again</button>
+    </div>
+    
+    <script>
+        // Game Constants
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        const CELL_WIDTH = 58;
+        const CELL_HEIGHT = CELL_WIDTH * 0.427; // Height is 42.7% of width for containers
+        const CONTAINER_COLORS = [
+            "#ff6b6b", // Red
+            "#48dbfb", // Light Blue
+            "#1dd1a1", // Green
+            "#feca57", // Yellow
+            "#5f27cd", // Purple
+            "#ff9f43", // Orange
+            "#54a0ff"  // Blue
+        ];
+        const CONTAINER_GRADIENTS = [
+            ["#ff8f8f", "#ff6b6b", "#d95757"], // Red
+            ["#80e4ff", "#48dbfb", "#3db8d4"], // Light Blue
+            ["#4de7b9", "#1dd1a1", "#18aa86"], // Green
+            ["#fee083", "#feca57", "#d3a747"], // Yellow
+            ["#8751f3", "#5f27cd", "#4c1fa6"], // Purple
+            ["#ffb870", "#ff9f43", "#d68338"], // Orange
+            ["#82b9ff", "#54a0ff", "#4683d0"]  // Blue
+        ];
+        const T49_COLOR_OVERLAY = "rgba(38, 217, 112, 0.3)";
+        const T49_GLOW = "0 0 8px rgba(38, 217, 112, 0.7)";
+        const T49_LABEL = "T49";
+        const FADE_DURATION = 7000; // 7 seconds in milliseconds
+        const FLASH_DURATION = 300; // Flash effect duration in ms
+        
+        // Game Variables
+        let canvas, ctx;
+        let board = [];
+        let currentPiece = null;
+        let gameInterval = null;
+        let animationId = null;
+        let gameSpeed = 700; // Starting speed in milliseconds
+        let lastMoveTime = 0;
+        let score = 0;
+        let level = 1;
+        let linesCleared = 0;
+        let gameRunning = false;
+        let gamePaused = false;
+        let difficultyLevel = "medium"; // default
+        let pauseStartTime = null;
+        
+        // Crane elements
+        let gantryCrane;
+        let craneCable;
+        
+        // Flash effect variables
+        let flashingLandingPiece = false; // Flag for pieces that just landed
+        let landingPieceFlashStart = 0; // Timestamp for landing flash start
+        let landingPieceCells = []; // Cells of the landing piece
+        
+        let flashingCompletedLines = []; // Array of lines being completed
+        let completedLinesFlashStart = 0; // Timestamp for completed lines flash
+        let pendingLineRemoval = false; // Flag for lines that will be removed
+        
+        // Particle system
+        let particles = [];
+        
+        // Initialize the game
+        function init() {
+            // Get canvas and context
+            canvas = document.getElementById("game-board");
+            ctx = canvas.getContext("2d");
+            
+            // Get crane elements
+            gantryCrane = document.querySelector(".gantry-crane");
+            craneCable = document.querySelector(".crane-cable");
+            
+            // Initialize board
+            initializeBoard();
+            
+            // Set up event listeners
+            document.addEventListener("keydown", handleKeyPress);
+            document.getElementById("start-button").addEventListener("click", startGame);
+            document.getElementById("pause-button").addEventListener("click", togglePause);
+            document.getElementById("restart-button").addEventListener("click", startGame);
+            
+            // Set up difficulty buttons
+            const difficultyButtons = document.querySelectorAll(".difficulty-button");
+            difficultyButtons.forEach(button => {
+                button.addEventListener("click", () => {
+                    difficultyButtons.forEach(btn => btn.classList.remove("selected"));
+                    button.classList.add("selected");
+                    difficultyLevel = button.dataset.difficulty;
+                });
+            });
+            
+            // Select medium difficulty by default
+            document.querySelector('[data-difficulty="medium"]').classList.add("selected");
+            
+            // Create grid overlay
+            createGridOverlay();
+            
+            // Draw initial empty board
+            drawBoard();
+            
+            // Set initial crane and cable position (center of board)
+            const boardCenterX = CELL_WIDTH * BOARD_WIDTH / 2;
+            if (gantryCrane) gantryCrane.style.left = `${boardCenterX}px`;
+            if (craneCable) {
+                craneCable.style.left = `${boardCenterX}px`;
+                craneCable.style.height = '0px';
+            }
+        }
+        
+        function createGridOverlay() {
+            // Create grid overlay
+            const gridOverlay = document.createElement("div");
+            gridOverlay.className = "grid-overlay";
+            canvas.parentNode.appendChild(gridOverlay);
+            
+            // Create grid pattern using SVG
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            svg.style.position = "absolute";
+            svg.style.top = "0";
+            svg.style.left = "0";
+            
+            // Create defs element for patterns
+            const defs = document.createElementNS(svgNS, "defs");
+            
+            // Create grid pattern
+            const pattern = document.createElementNS(svgNS, "pattern");
+            pattern.setAttribute("id", "grid");
+            pattern.setAttribute("width", CELL_WIDTH);
+            pattern.setAttribute("height", CELL_HEIGHT);
+            pattern.setAttribute("patternUnits", "userSpaceOnUse");
+            
+            // Horizontal line
+            const hLine = document.createElementNS(svgNS, "path");
+            hLine.setAttribute("d", `M 0 ${CELL_HEIGHT} H ${CELL_WIDTH}`);
+            hLine.setAttribute("stroke", "rgba(255, 255, 255, 0.05)");
+            hLine.setAttribute("stroke-width", "1");
+            
+            // Vertical line
+            const vLine = document.createElementNS(svgNS, "path");
+            vLine.setAttribute("d", `M ${CELL_WIDTH} 0 V ${CELL_HEIGHT}`);
+            vLine.setAttribute("stroke", "rgba(255, 255, 255, 0.05)");
+            vLine.setAttribute("stroke-width", "1");
+            
+            pattern.appendChild(hLine);
+            pattern.appendChild(vLine);
+            defs.appendChild(pattern);
+            svg.appendChild(defs);
+            
+            // Create the rectangle that will be filled with the grid pattern
+            const rect = document.createElementNS(svgNS, "rect");
+            rect.setAttribute("width", "100%");
+            rect.setAttribute("height", "100%");
+            rect.setAttribute("fill", "url(#grid)");
+            svg.appendChild(rect);
+            
+            gridOverlay.appendChild(svg);
+        }
+        
+        function initializeBoard() {
+            board = [];
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                board[y] = [];
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    board[y][x] = null;
+                }
+            }
+        }
+        
+        function startGame() {
+            // Always start a new game regardless of current state
+            if (gameInterval) clearInterval(gameInterval);
+            if (animationId) cancelAnimationFrame(animationId);
+            
+            // Reset game state
+            initializeBoard();
+            score = 0;
+            level = 1;
+            linesCleared = 0;
+            lastMoveTime = Date.now();
+            gameSpeed = 700; // Starting speed
+            gameRunning = true;
+            gamePaused = false;
+            pauseStartTime = null; // Reset pause timer
+            particles = []; // Clear particles
+            
+            // Reset flash variables
+            flashingLandingPiece = false;
+            landingPieceCells = [];
+            flashingCompletedLines = [];
+            pendingLineRemoval = false;
+            
+            // Update UI
+            updateScore();
+            document.getElementById("pause-button").innerHTML = '<i class="fas fa-pause"></i> Pause';
+            
+            // Hide game over
+            document.getElementById("game-over").style.display = "none";
+            
+            // Create first piece
+            currentPiece = createRandomPiece();
+            
+            // Update crane, cable and spreader positions for the new piece
+            const pieceWidth = currentPiece.shape[0].length * CELL_WIDTH;
+            const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (pieceWidth / 2);
+            updateCranePosition(pieceCenterX);
+            
+            // Also update cable
+            if (craneCable) {
+                craneCable.style.left = `${pieceCenterX}px`;
+                craneCable.style.height = '10px';
+            }
+            
+            // Initialize spreader bar for the new piece
+            const spreaderBar = document.querySelector('.spreader-bar');
+            if (spreaderBar) {
+                const spreaderWidth = Math.max(pieceWidth + 4, 30);
+                spreaderBar.style.width = `${spreaderWidth}px`;
+                spreaderBar.style.left = `${pieceCenterX - (spreaderWidth / 2)}px`;
+                spreaderBar.style.top = '10px';
+                spreaderBar.style.display = 'block';
+            }
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        function togglePause() {
+            if (!gameRunning) return;
+            
+            gamePaused = !gamePaused;
+            document.getElementById("pause-button").innerHTML = gamePaused ? 
+                '<i class="fas fa-play"></i> Resume' : 
+                '<i class="fas fa-pause"></i> Pause';
+            
+            if (gamePaused) {
+                // Store when the pause began
+                pauseStartTime = Date.now();
+            } else {
+                // When resuming, calculate how long the game was paused
+                if (pauseStartTime) {
+                    const pauseDuration = Date.now() - pauseStartTime;
+                    
+                    // Adjust all placedTime values to account for the pause
+                    for (let y = 0; y < BOARD_HEIGHT; y++) {
+                        for (let x = 0; x < BOARD_WIDTH; x++) {
+                            if (board[y][x] && board[y][x].placedTime) {
+                                // Shift the placedTime forward by the pause duration
+                                board[y][x].placedTime += pauseDuration;
+                            }
+                        }
+                    }
+                    
+                    // Reset pause time
+                    pauseStartTime = null;
+                }
+                
+                lastMoveTime = Date.now();
+                gameLoop();
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning || gamePaused) return;
+            
+            const now = Date.now();
+            const deltaTime = now - lastMoveTime;
+            
+            // Handle line removal after flash effect
+            if (pendingLineRemoval && (now - completedLinesFlashStart) >= FLASH_DURATION) {
+                removeCompletedLines();
+                pendingLineRemoval = false;
+                flashingCompletedLines = [];
+            }
+            
+            // Move down if enough time has passed
+            if (deltaTime >= gameSpeed && currentPiece && !pendingLineRemoval) {
+                moveDown();
+                lastMoveTime = now;
+            }
+            
+            // Update crane cable length based on current piece position
+            updateCraneCable();
+            
+            // Update particles
+            updateParticles();
+            
+            // Draw the current state
+            drawBoard();
+            drawCurrentPiece();
+            drawParticles();
+            
+            // Request next frame
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function createRandomPiece() {
+            // Determine piece dimensions
+            const height = Math.floor(Math.random() * 4) + 1; // 1-4 containers high
+            const widthType = Math.random() < 0.5 ? "20ft" : "40ft"; // 50% chance of either
+            
+            // Create a piece array based on dimensions
+            let piece = [];
+            const colorIndex = Math.floor(Math.random() * CONTAINER_COLORS.length);
+            const color = CONTAINER_COLORS[colorIndex];
+            const colorGradient = CONTAINER_GRADIENTS[colorIndex];
+            
+            // Determine if this is a T49 (Terminal49) container based on difficulty
+            let isT49 = false;
+            switch (difficultyLevel) {
+                case "easy":
+                    isT49 = true; // All containers are T49
+                    break;
+                case "medium":
+                    isT49 = Math.random() < 0.5; // 50% chance of T49
+                    break;
+                case "hard":
+                    isT49 = false; // No containers are T49
+                    break;
+            }
+            
+            // Create the piece structure
+            for (let i = 0; i < height; i++) {
+                let row = [];
+                if (widthType === "20ft") {
+                    row.push({ 
+                        color: color, 
+                        colorGradient: colorGradient,
+                        isT49: isT49 
+                    });
+                } else { // 40ft
+                    row.push({ 
+                        color: color, 
+                        colorGradient: colorGradient,
+                        isT49: isT49 
+                    });
+                    row.push({ 
+                        color: color, 
+                        colorGradient: colorGradient,
+                        isT49: isT49 
+                    });
+                }
+                piece.push(row);
+            }
+            
+            // Set the piece position at the top center of the board
+            return {
+                shape: piece,
+                x: Math.floor((BOARD_WIDTH - piece[0].length) / 2),
+                y: 0,
+                widthType: widthType,
+                height: height,
+                isT49: isT49,
+                rotation: 0
+            };
+        }
+        
+        function drawBoard() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw the background
+            ctx.fillStyle = "rgba(28, 30, 36, 0.8)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Get current time
+            const now = Date.now();
+            
+            // Draw the placed containers
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    if (board[y][x]) {
+                        // Determine if this cell is flashing
+                        let isFlashing = false;
+                        let flashIntensity = 0;
+                        
+                        // Check if it's part of landing piece flash
+                        if (flashingLandingPiece && landingPieceCells.some(cell => cell.x === x && cell.y === y)) {
+                            const flashElapsed = now - landingPieceFlashStart;
+                            if (flashElapsed < FLASH_DURATION) {
+                                isFlashing = true;
+                                flashIntensity = 0.7 * (1 - flashElapsed / FLASH_DURATION);
+                            }
+                        }
+                        
+                        // Check if it's part of completed line flash (takes precedence)
+                        if (flashingCompletedLines.includes(y)) {
+                            const flashElapsed = now - completedLinesFlashStart;
+                            if (flashElapsed < FLASH_DURATION) {
+                                isFlashing = true;
+                                flashIntensity = 0.9 * (1 - flashElapsed / FLASH_DURATION);
+                            }
+                        }
+                        
+                        drawCell(x, y, board[y][x], now, isFlashing, flashIntensity);
+                    }
+                }
+            }
+        }
+        
+        function drawCell(x, y, cellData, currentTime, isFlashing, flashIntensity) {
+            // Calculate normal opacity based on time
+            let opacity = 1;
+            if (!cellData.isT49 && cellData.placedTime) {
+                const elapsedTime = currentTime - cellData.placedTime;
+                if (elapsedTime >= FADE_DURATION) {
+                    opacity = 0; // Completely invisible after fade duration
+                } else {
+                    opacity = 1 - (elapsedTime / FADE_DURATION); // Progressive fade
+                }
+            }
+            
+            // If it's flashing but would normally be invisible, show it anyway
+            if (opacity <= 0 && !isFlashing) return;
+            
+            // Use a higher opacity when flashing
+            if (isFlashing) {
+                opacity = Math.max(opacity, flashIntensity);
+            }
+            
+            // Container position
+            const posX = x * CELL_WIDTH;
+            const posY = y * CELL_HEIGHT;
+            
+            // Set initial opacity
+            ctx.globalAlpha = opacity;
+            
+            // Create container gradient
+            const gradient = ctx.createLinearGradient(posX, posY, posX, posY + CELL_HEIGHT);
+            
+            if (cellData.colorGradient) {
+                gradient.addColorStop(0, cellData.colorGradient[0]);
+                gradient.addColorStop(0.5, cellData.colorGradient[1]);
+                gradient.addColorStop(1, cellData.colorGradient[2]);
+            } else {
+                // Fallback if no gradient is defined
+                gradient.addColorStop(0, cellData.color);
+                gradient.addColorStop(1, shadeColor(cellData.color, -20));
+            }
+            
+            // Draw the container with gradient
+            ctx.fillStyle = gradient;
+            
+            // Main container body with rounded corners
+            ctx.beginPath();
+            const radius = 3;
+            ctx.moveTo(posX + radius, posY);
+            ctx.lineTo(posX + CELL_WIDTH - radius, posY);
+            ctx.quadraticCurveTo(posX + CELL_WIDTH, posY, posX + CELL_WIDTH, posY + radius);
+            ctx.lineTo(posX + CELL_WIDTH, posY + CELL_HEIGHT - radius);
+            ctx.quadraticCurveTo(posX + CELL_WIDTH, posY + CELL_HEIGHT, posX + CELL_WIDTH - radius, posY + CELL_HEIGHT);
+            ctx.lineTo(posX + radius, posY + CELL_HEIGHT);
+            ctx.quadraticCurveTo(posX, posY + CELL_HEIGHT, posX, posY + CELL_HEIGHT - radius);
+            ctx.lineTo(posX, posY + radius);
+            ctx.quadraticCurveTo(posX, posY, posX + radius, posY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add container highlights and shadows
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.beginPath();
+            ctx.moveTo(posX + radius, posY);
+            ctx.lineTo(posX + CELL_WIDTH - radius, posY);
+            ctx.quadraticCurveTo(posX + CELL_WIDTH, posY, posX + CELL_WIDTH, posY + radius);
+            ctx.lineTo(posX + CELL_WIDTH, posY + 3);
+            ctx.lineTo(posX, posY + 3);
+            ctx.lineTo(posX, posY + radius);
+            ctx.quadraticCurveTo(posX, posY, posX + radius, posY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Container details
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            const innerPadding = 4;
+            const innerWidth = CELL_WIDTH - innerPadding * 2;
+            const innerHeight = CELL_HEIGHT - innerPadding * 2;
+            
+            // Inner container with rounded corners
+            ctx.beginPath();
+            const innerRadius = 2;
+            ctx.moveTo(posX + innerPadding + innerRadius, posY + innerPadding);
+            ctx.lineTo(posX + innerPadding + innerWidth - innerRadius, posY + innerPadding);
+            ctx.quadraticCurveTo(posX + innerPadding + innerWidth, posY + innerPadding, posX + innerPadding + innerWidth, posY + innerPadding + innerRadius);
+            ctx.lineTo(posX + innerPadding + innerWidth, posY + innerPadding + innerHeight - innerRadius);
+            ctx.quadraticCurveTo(posX + innerPadding + innerWidth, posY + innerPadding + innerHeight, posX + innerPadding + innerWidth - innerRadius, posY + innerPadding + innerHeight);
+            ctx.lineTo(posX + innerPadding + innerRadius, posY + innerPadding + innerHeight);
+            ctx.quadraticCurveTo(posX + innerPadding, posY + innerPadding + innerHeight, posX + innerPadding, posY + innerPadding + innerHeight - innerRadius);
+            ctx.lineTo(posX + innerPadding, posY + innerPadding + innerRadius);
+            ctx.quadraticCurveTo(posX + innerPadding, posY + innerPadding, posX + innerPadding + innerRadius, posY + innerPadding);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Container ridges
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            const ridgeCount = 8;
+            const ridgeSpacing = innerWidth / (ridgeCount + 1);
+            
+            for (let i = 1; i <= ridgeCount; i++) {
+                ctx.fillRect(
+                    posX + innerPadding + (i * ridgeSpacing),
+                    posY + innerPadding + 1,
+                    1.5,
+                    innerHeight - 2
+                );
+            }
+            
+            // T49 label if applicable
+            if (cellData.isT49) {
+                // Add glow effect for T49 containers
+                ctx.shadowColor = 'rgba(38, 217, 112, 0.5)';
+                ctx.shadowBlur = 8;
+                
+                // T49 overlay
+                ctx.fillStyle = T49_COLOR_OVERLAY;
+                ctx.beginPath();
+                ctx.moveTo(posX + radius, posY);
+                ctx.lineTo(posX + CELL_WIDTH - radius, posY);
+                ctx.quadraticCurveTo(posX + CELL_WIDTH, posY, posX + CELL_WIDTH, posY + radius);
+                ctx.lineTo(posX + CELL_WIDTH, posY + CELL_HEIGHT - radius);
+                ctx.quadraticCurveTo(posX + CELL_WIDTH, posY + CELL_HEIGHT, posX + CELL_WIDTH - radius, posY + CELL_HEIGHT);
+                ctx.lineTo(posX + radius, posY + CELL_HEIGHT);
+                ctx.quadraticCurveTo(posX, posY + CELL_HEIGHT, posX, posY + CELL_HEIGHT - radius);
+                ctx.lineTo(posX, posY + radius);
+                ctx.quadraticCurveTo(posX, posY, posX + radius, posY);
+                ctx.closePath();
+                ctx.fill();
+                
+                // T49 label
+                ctx.fillStyle = "white";
+                ctx.font = "bold 14px 'Exo 2', sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(T49_LABEL, posX + CELL_WIDTH / 2, posY + CELL_HEIGHT / 2);
+                
+                // Reset shadow for other drawings
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+            }
+            
+            // Draw flash effect
+            if (isFlashing) {
+                ctx.fillStyle = "white";
+                ctx.globalAlpha = flashIntensity;
+                ctx.beginPath();
+                ctx.moveTo(posX + radius, posY);
+                ctx.lineTo(posX + CELL_WIDTH - radius, posY);
+                ctx.quadraticCurveTo(posX + CELL_WIDTH, posY, posX + CELL_WIDTH, posY + radius);
+                ctx.lineTo(posX + CELL_WIDTH, posY + CELL_HEIGHT - radius);
+                ctx.quadraticCurveTo(posX + CELL_WIDTH, posY + CELL_HEIGHT, posX + CELL_WIDTH - radius, posY + CELL_HEIGHT);
+                ctx.lineTo(posX + radius, posY + CELL_HEIGHT);
+                ctx.quadraticCurveTo(posX, posY + CELL_HEIGHT, posX, posY + CELL_HEIGHT - radius);
+                ctx.lineTo(posX, posY + radius);
+                ctx.quadraticCurveTo(posX, posY, posX + radius, posY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Reset alpha
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawCurrentPiece() {
+            if (!currentPiece) return;
+            
+            // Draw active piece
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+                for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                    if (currentPiece.shape[y][x]) {
+                        const pieceX = currentPiece.x + x;
+                        const pieceY = currentPiece.y + y;
+                        
+                        // Only draw if within the visible board
+                        if (pieceY >= 0) {
+                            // Draw the active cell similar to drawCell but with current time
+                            drawCell(pieceX, pieceY, currentPiece.shape[y][x], Date.now(), false, 0);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Crane positioning functions
+        function updateCranePosition(xPos) {
+            // Center crane over the middle of the piece
+            if (!gantryCrane) return;
+            
+            // Allow the crane to go fully to the edges (no constraints)
+            // Transform is handling the centering now
+            gantryCrane.style.left = `${xPos}px`;
+        }
+        
+        function updateCraneCable() {
+            if (!currentPiece || !craneCable) return;
+            
+            // Calculate the current piece center position
+            const pieceWidth = currentPiece.shape[0].length * CELL_WIDTH;
+            const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (pieceWidth / 2);
+            
+            // Update crane position to follow the piece
+            updateCranePosition(pieceCenterX);
+            
+            // Update cable position (exact same center as crane)
+            craneCable.style.left = `${pieceCenterX}px`;
+            
+            // Calculate where the piece starts relative to the top of the board
+            const pieceTopY = currentPiece.y * CELL_HEIGHT;
+            
+            // Cable length should reach exactly to the top of the piece
+            // Adjust for the new position of the crane (-40px from top) and container offset (12px)
+            const cableLength = pieceTopY + 1; // + 40 + 12 - 10; // -10px is top of cable
+            craneCable.style.height = `${Math.max(0, cableLength)}px`;
+        }
+        
+        function moveLeft() {
+            if (!gameRunning || gamePaused || !currentPiece) return;
+            
+            currentPiece.x--;
+            if (isCollision()) {
+                currentPiece.x++; // Revert the move
+            } else {
+                // Update crane position
+                const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (currentPiece.shape[0].length * CELL_WIDTH) / 2;
+                updateCranePosition(pieceCenterX);
+                updateCraneCable();
+            }
+        }
+        
+        function moveRight() {
+            if (!gameRunning || gamePaused || !currentPiece) return;
+            
+            currentPiece.x++;
+            if (isCollision()) {
+                currentPiece.x--; // Revert the move
+            } else {
+                // Update crane position
+                const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (currentPiece.shape[0].length * CELL_WIDTH) / 2;
+                updateCranePosition(pieceCenterX);
+                updateCraneCable();
+            }
+        }
+        
+        function moveDown() {
+            if (!gameRunning || gamePaused || !currentPiece || pendingLineRemoval) return;
+            
+            currentPiece.y++;
+            if (isCollision()) {
+                currentPiece.y--; // Revert the move
+                
+                // Start landing piece flash effect
+                landingPieceCells = [];
+                for (let y = 0; y < currentPiece.shape.length; y++) {
+                    for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                        if (currentPiece.shape[y][x]) {
+                            const boardY = currentPiece.y + y;
+                            const boardX = currentPiece.x + x;
+                            if (boardY >= 0 && boardY < BOARD_HEIGHT) {
+                                landingPieceCells.push({x: boardX, y: boardY});
+                            }
+                        }
+                    }
+                }
+                
+                flashingLandingPiece = true;
+                landingPieceFlashStart = Date.now();
+                
+                // Add landing particles
+                createLandingParticles(currentPiece);
+                
+                // Place the piece and check for lines
+                placePiece();
+                checkCompletedLines();
+                
+                // Don't create next piece if lines are pending removal
+                if (!pendingLineRemoval) {
+                    // Create next piece immediately (no waiting)
+                    currentPiece = createRandomPiece();
+                    
+                    // Update crane position for new piece
+                    const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (currentPiece.shape[0].length * CELL_WIDTH) / 2;
+                    updateCranePosition(pieceCenterX);
+                    updateCraneCable();
+                    
+                    // Check for game over
+                    if (isCollision()) {
+                        gameOver();
+                    }
+                } else {
+                    // Temporarily set currentPiece to null while lines are being cleared
+                    currentPiece = null;
+                }
+            } else {
+                // Update cable length as piece moves down
+                updateCraneCable();
+            }
+        }
+        
+        function hardDrop() {
+            if (!gameRunning || gamePaused || !currentPiece || pendingLineRemoval) return;
+            
+            // Calculate final position
+            let dropDistance = 0;
+            while (!isCollisionAt(currentPiece.x, currentPiece.y + dropDistance + 1)) {
+                dropDistance++;
+            }
+            
+            // Add hard drop particles
+            createHardDropParticles(currentPiece, dropDistance);
+            
+            // Move to final position
+            currentPiece.y += dropDistance;
+            score += dropDistance * 2; // Bonus points
+            
+            // Same landing piece flash as moveDown
+            landingPieceCells = [];
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+                for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                    if (currentPiece.shape[y][x]) {
+                        const boardY = currentPiece.y + y;
+                        const boardX = currentPiece.x + x;
+                        if (boardY >= 0 && boardY < BOARD_HEIGHT) {
+                            landingPieceCells.push({x: boardX, y: boardY});
+                        }
+                    }
+                }
+            }
+            
+            flashingLandingPiece = true;
+            landingPieceFlashStart = Date.now();
+            
+            // Create landing particles
+            createLandingParticles(currentPiece);
+            
+            // Update cable length for hard drop
+            updateCraneCable();
+            
+            // Place piece and check lines
+            placePiece();
+            checkCompletedLines();
+            updateScore();
+            
+            // Don't create next piece if lines are pending removal
+            if (!pendingLineRemoval) {
+                // Create next piece immediately
+                currentPiece = createRandomPiece();
+                
+                // Update crane position for new piece
+                const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (currentPiece.shape[0].length * CELL_WIDTH) / 2;
+                updateCranePosition(pieceCenterX);
+                updateCraneCable();
+                
+                // Check for game over
+                if (isCollision()) {
+                    gameOver();
+                }
+            } else {
+                // Temporarily set currentPiece to null while lines are being cleared
+                currentPiece = null;
+            }
+        }
+        
+        function isCollision() {
+            return isCollisionAt(currentPiece.x, currentPiece.y);
+        }
+        
+        function isCollisionAt(x, y) {
+            const shape = currentPiece.shape;
+            for (let pieceY = 0; pieceY < shape.length; pieceY++) {
+                for (let pieceX = 0; pieceX < shape[pieceY].length; pieceX++) {
+                    if (shape[pieceY][pieceX]) {
+                        const boardX = x + pieceX;
+                        const boardY = y + pieceY;
+                        
+                        // Check bounds
+                        if (boardX < 0 || boardX >= BOARD_WIDTH || boardY >= BOARD_HEIGHT) {
+                            return true;
+                        }
+                        
+                        // Check collision with placed pieces
+                        if (boardY >= 0 && board[boardY] && board[boardY][boardX]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function placePiece() {
+            const now = Date.now();
+            
+            for (let y = 0; y < currentPiece.shape.length; y++) {
+                for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                    if (currentPiece.shape[y][x]) {
+                        const boardY = currentPiece.y + y;
+                        const boardX = currentPiece.x + x;
+                        
+                        if (boardY >= 0 && boardY < BOARD_HEIGHT) {
+                            board[boardY][boardX] = {
+                                color: currentPiece.shape[y][x].color,
+                                colorGradient: currentPiece.shape[y][x].colorGradient,
+                                isT49: currentPiece.shape[y][x].isT49,
+                                placedTime: now
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        
+        function checkCompletedLines() {
+            const completedLines = [];
+            
+            // Find all completed lines
+            for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+                let isLineComplete = true;
+                
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    if (!board[y][x]) {
+                        isLineComplete = false;
+                        break;
+                    }
+                }
+                
+                if (isLineComplete) {
+                    completedLines.push(y);
+                }
+            }
+            
+            if (completedLines.length > 0) {
+                // Start flash effect
+                flashingCompletedLines = completedLines;
+                completedLinesFlashStart = Date.now();
+                pendingLineRemoval = true;
+                
+                // Create particles for the completion
+                createLineCompletionParticles(completedLines);
+            }
+            
+            return completedLines.length;
+        }
+        
+        function removeCompletedLines() {
+            if (flashingCompletedLines.length === 0) return;
+            
+            // Create a new board to rebuild after line removal
+            const newBoard = [];
+            
+            // Initialize the new board with empty rows
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                newBoard[y] = Array(BOARD_WIDTH).fill(null);
+            }
+            
+            // Copy non-completed lines to the new board, starting from the bottom
+            let targetRow = BOARD_HEIGHT - 1;
+            
+            // Process from bottom to top
+            for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+                // Skip completed lines
+                if (flashingCompletedLines.includes(y)) {
+                    continue;
+                }
+                
+                // Copy this row to the target position in the new board
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    newBoard[targetRow][x] = board[y][x];
+                }
+                
+                targetRow--;
+            }
+            
+            // Update the board with the new state
+            board = newBoard;
+            
+            // Update score
+            updateScore(flashingCompletedLines.length);
+            
+            // Generate new piece after lines are removed
+            currentPiece = createRandomPiece();
+            
+            // Update crane position for new piece
+            const pieceCenterX = (currentPiece.x * CELL_WIDTH) + (currentPiece.shape[0].length * CELL_WIDTH) / 2;
+            updateCranePosition(pieceCenterX);
+            updateCraneCable();
+            
+            // Check for game over
+            if (isCollision()) {
+                gameOver();
+            }
+        }
+        
+        function updateScore(lines = 0) {
+            if (lines > 0) {
+                // Award points
+                const basePoints = [0, 100, 300, 500, 800]; // Points for 0, 1, 2, 3, 4 lines
+                const linePoints = basePoints[Math.min(lines, 4)] * level;
+                score += linePoints;
+                
+                // Create score pop-up particles
+                createScorePopupParticles(linePoints);
+                
+                // Update lines and level
+                linesCleared += lines;
+                level = Math.floor(linesCleared / 10) + 1;
+                
+                // Update game speed
+                gameSpeed = Math.max(100, 700 - (level - 1) * 60);
+            }
+            
+            // Update display
+            document.getElementById("score").textContent = score;
+            document.getElementById("level").textContent = level;
+            document.getElementById("lines").textContent = linesCleared;
+        }
+        
+        function gameOver() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            gameRunning = false;
+            
+            // Show game over screen
+            document.getElementById("final-score").textContent = score;
+            document.getElementById("game-over").style.display = "flex";
+        }
+        
+        function handleKeyPress(e) {
+            if (!gameRunning) {
+                if (e.key === "Enter" || e.code === "Space") {
+                    startGame();
+                }
+                return;
+            }
+            
+            if (gamePaused) {
+                if (e.key === "p" || e.key === "P") {
+                    togglePause();
+                }
+                return;
+            }
+            
+            switch (e.key) {
+                case "ArrowLeft":
+                    moveLeft();
+                    break;
+                case "ArrowRight":
+                    moveRight();
+                    break;
+                case "ArrowDown":
+                    moveDown();
+                    break;
+                case " ": // Space bar
+                    hardDrop();
+                    break;
+                case "p":
+                case "P":
+                    togglePause();
+                    break;
+            }
+            
+            e.preventDefault();
+        }
+        
+        // Particle system functions
+        function createParticle(x, y, color, velocity, size, lifetime, type = 'dot') {
+            return {
+                x,
+                y,
+                color,
+                velocity,
+                size,
+                lifetime,
+                age: 0,
+                type
+            };
+        }
+        
+        function createLandingParticles(piece) {
+            // Create particles for each cell of the landing piece
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    if (piece.shape[y][x]) {
+                        const boardX = piece.x + x;
+                        const boardY = piece.y + y;
+                        
+                        // Only create particles if within the visible board
+                        if (boardY >= 0 && boardY < BOARD_HEIGHT) {
+                            const posX = boardX * CELL_WIDTH + CELL_WIDTH / 2;
+                            const posY = boardY * CELL_HEIGHT + CELL_HEIGHT / 2;
+                            
+                            // Create dust particles
+                            for (let i = 0; i < 6; i++) {
+                                const angle = Math.random() * Math.PI * 2;
+                                const speed = 0.5 + Math.random() * 1.5;
+                                
+                                particles.push(createParticle(
+                                    posX,
+                                    posY,
+                                    piece.shape[y][x].isT49 ? "#26D970" : piece.shape[y][x].color,
+                                    { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+                                    1 + Math.random() * 3,
+                                    300 + Math.random() * 300,
+                                    'dot'
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        function createHardDropParticles(piece, dropDistance) {
+            // Only create particles if there's a significant drop
+            if (dropDistance < 2) return;
+            
+            // Create particles for the drop path
+            for (let y = 0; y < piece.shape.length; y++) {
+                for (let x = 0; x < piece.shape[y].length; x++) {
+                    if (piece.shape[y][x]) {
+                        const startY = piece.y + y;
+                        const endY = piece.y + dropDistance + y;
+                        const boardX = piece.x + x;
+                        
+                        // Create trail particles along the path
+                        for (let trailY = startY; trailY < endY; trailY += 2) {
+                            // Only create particles if within the visible board
+                            if (trailY >= 0) {
+                                const posX = boardX * CELL_WIDTH + CELL_WIDTH / 2;
+                                const posY = trailY * CELL_HEIGHT + CELL_HEIGHT / 2;
+                                
+                                // Create trail particles
+                                for (let i = 0; i < 2; i++) {
+                                    const angle = Math.random() * Math.PI - Math.PI/2; // Mostly upward
+                                    const speed = 0.2 + Math.random() * 1;
+                                    
+                                    particles.push(createParticle(
+                                        posX + (Math.random() * CELL_WIDTH - CELL_WIDTH/2),
+                                        posY,
+                                        piece.shape[y][x].isT49 ? "#26D970" : piece.shape[y][x].color,
+                                        { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+                                        1 + Math.random() * 2,
+                                        200 + Math.random() * 200,
+                                        'dot'
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        function createLineCompletionParticles(completedLines) {
+            // Create particles for each completed line
+            completedLines.forEach(lineY => {
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    const posX = x * CELL_WIDTH + CELL_WIDTH / 2;
+                    const posY = lineY * CELL_HEIGHT + CELL_HEIGHT / 2;
+                    
+                    const color = board[lineY][x] ? 
+                        (board[lineY][x].isT49 ? "#26D970" : board[lineY][x].color) : 
+                        "#ffffff";
+                    
+                    // Create sparks
+                    for (let i = 0; i < 3; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 1 + Math.random() * 3;
+                        
+                        particles.push(createParticle(
+                            posX,
+                            posY,
+                            color,
+                            { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+                            1.5 + Math.random() * 2.5,
+                            400 + Math.random() * 400,
+                            'spark'
+                        ));
+                    }
+                }
+            });
+        }
+        
+        function createScorePopupParticles(points) {
+            // Position the score popup in the center of completed lines or above the board
+            const posX = canvas.width / 2;
+            const posY = canvas.height / 3;
+            
+            // Create text particle
+            particles.push({
+                x: posX,
+                y: posY,
+                text: `+${points}`,
+                color: "#26D970",
+                velocity: { x: 0, y: -0.5 },
+                size: 24,
+                lifetime: 1500,
+                age: 0,
+                type: 'text'
+            });
+        }
+        
+        function updateParticles() {
+            const now = Date.now();
+            
+            // Update and remove expired particles
+            particles = particles.filter(particle => {
+                // Update age
+                particle.age += 16; // Approximate milliseconds per frame
+                
+                // Move particle
+                particle.x += particle.velocity.x;
+                particle.y += particle.velocity.y;
+                
+                // Add gravity to some particle types
+                if (particle.type === 'spark' || particle.type === 'dot') {
+                    particle.velocity.y += 0.03; // Gravity
+                }
+                
+                // Keep if not expired
+                return particle.age < particle.lifetime;
+            });
+        }
+        
+        function drawParticles() {
+            // Draw all particles
+            particles.forEach(particle => {
+                // Calculate opacity based on age
+                const opacity = 1 - (particle.age / particle.lifetime);
+                
+                ctx.globalAlpha = opacity;
+                
+                switch (particle.type) {
+                    case 'dot':
+                        // Draw circular particle
+                        ctx.fillStyle = particle.color;
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    
+                    case 'spark':
+                        // Draw spark particle
+                        ctx.fillStyle = particle.color;
+                        ctx.shadowColor = particle.color;
+                        ctx.shadowBlur = 5;
+                        
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.shadowBlur = 0;
+                        break;
+                    
+                    case 'text':
+                        // Draw text particle
+                        ctx.fillStyle = particle.color;
+                        ctx.font = `bold ${particle.size}px 'Exo 2', sans-serif`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                        ctx.shadowBlur = 5;
+                        ctx.fillText(particle.text, particle.x, particle.y);
+                        ctx.shadowBlur = 0;
+                        break;
+                }
+                
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        // Helper function to shade a color
+        function shadeColor(color, percent) {
+            const num = parseInt(color.replace("#", ""), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            
+            return "#" + (
+                0x1000000 +
+                (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+                (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+                (B < 255 ? (B < 0 ? 0 : B) : 255)
+            ).toString(16).slice(1);
+        }
+        
+        // Initialize the game when the window loads
+        window.onload = init;
+    </script>
+</body>
+</html>
