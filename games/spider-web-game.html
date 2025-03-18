@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spider Web Builder</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #87CEEB;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+    }
+    
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    
+    #controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 3;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn {
+      background-color: #FF9900;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    #reset-btn {
+      background-color: #FF6347;
+    }
+    
+    #title {
+      position: absolute;
+      top: 10px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      color: #333;
+      font-size: 24px;
+      z-index: 2;
+    }
+    
+    .spider {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      transition: all 0.5s ease-in-out;
+      z-index: 2;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1 id="title">Spider Web Builder</h1>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+      <button id="reset-btn" class="btn">New Web</button>
+    </div>
+  </div>
+
+  <script>
+    // Game state
+    const gameState = {
+      webPoints: [],
+      webLines: [],
+      spider: null,
+      currentPosition: null,
+      colors: ['#FFFFFF', '#FFD700', '#FF6347', '#9370DB', '#20B2AA'],
+      currentColor: 0
+    };
+
+    // Get DOM elements
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const resetBtn = document.getElementById('reset-btn');
+    const gameContainer = document.getElementById('game-container');
+
+    // Set canvas dimensions
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drawWeb();
+    }
+
+    // Initialize
+    function init() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      // Create spider
+      createSpider();
+      
+      // Event listeners
+      canvas.addEventListener('click', handleCanvasClick);
+      resetBtn.addEventListener('click', resetGame);
+      
+      // Start game loop
+      gameLoop();
+    }
+
+    // Create spider element
+    function createSpider() {
+      if (gameState.spider) {
+        gameState.spider.remove();
+      }
+      
+      gameState.spider = document.createElement('div');
+      gameState.spider.className = 'spider';
+      gameState.spider.innerHTML = `
+        <svg viewBox="0 0 100 100" width="60" height="60">
+          <!-- Spider body -->
+          <circle cx="50" cy="50" r="20" fill="#333" />
+          <!-- Eyes -->
+          <circle cx="40" cy="45" r="5" fill="white" />
+          <circle cx="60" cy="45" r="5" fill="white" />
+          <circle cx="40" cy="45" r="2" fill="black" />
+          <circle cx="60" cy="45" r="2" fill="black" />
+          <!-- Smile -->
+          <path d="M40,60 Q50,70 60,60" stroke="white" stroke-width="2" fill="none" />
+          <!-- Legs -->
+          <path d="M30,50 Q20,20 10,10" stroke="#333" stroke-width="3" fill="none" />
+          <path d="M70,50 Q80,20 90,10" stroke="#333" stroke-width="3" fill="none" />
+          <path d="M30,60 Q10,70 5,90" stroke="#333" stroke-width="3" fill="none" />
+          <path d="M70,60 Q90,70 95,90" stroke="#333" stroke-width="3" fill="none" />
+          <path d="M25,55 Q5,55 0,50" stroke="#333" stroke-width="3" fill="none" />
+          <path d="M75,55 Q95,55 100,50" stroke="#333" stroke-width="3" fill="none" />
+        </svg>
+      `;
+      
+      gameState.spider.style.animation = 'bounce 2s infinite';
+      gameContainer.appendChild(gameState.spider);
+      
+      // Position spider off-screen initially
+      gameState.spider.style.top = '-100px';
+      gameState.spider.style.left = '-100px';
+    }
+
+    // Handle canvas click
+    function handleCanvasClick(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Add web point
+      gameState.webPoints.push({ x, y });
+      
+      // Add web lines - connect to previous points
+      if (gameState.webPoints.length > 1) {
+        const lastPoint = gameState.webPoints[gameState.webPoints.length - 1];
+        
+        // Connect to some earlier points (not all, to avoid too many lines)
+        for (let i = Math.max(0, gameState.webPoints.length - 5); i < gameState.webPoints.length - 1; i++) {
+          gameState.webLines.push({
+            from: { x: gameState.webPoints[i].x, y: gameState.webPoints[i].y },
+            to: { x: lastPoint.x, y: lastPoint.y },
+            color: gameState.colors[gameState.currentColor]
+          });
+        }
+        
+        // Cycle through colors
+        gameState.currentColor = (gameState.currentColor + 1) % gameState.colors.length;
+      }
+      
+      // Move spider to latest web point
+      if (gameState.webPoints.length > 0) {
+        moveSpider(x, y);
+      }
+      
+      // Draw the updated web
+      drawWeb();
+    }
+    
+    // Move spider to position
+    function moveSpider(x, y) {
+      if (!gameState.spider) return;
+      
+      gameState.currentPosition = { x, y };
+      gameState.spider.style.left = (x - 30) + 'px';
+      gameState.spider.style.top = (y - 30) + 'px';
+    }
+
+    // Reset game
+    function resetGame() {
+      gameState.webPoints = [];
+      gameState.webLines = [];
+      gameState.currentColor = 0;
+      createSpider();
+      drawWeb();
+    }
+
+    // Draw web on canvas
+    function drawWeb() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw points
+      gameState.webPoints.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+      });
+      
+      // Draw lines
+      gameState.webLines.forEach(line => {
+        ctx.beginPath();
+        ctx.moveTo(line.from.x, line.from.y);
+        ctx.lineTo(line.to.x, line.to.y);
+        ctx.strokeStyle = line.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    }
+    
+    // Random spider movement when not many web points
+    function updateSpiderPosition() {
+      if (gameState.webPoints.length < 2) return;
+      
+      // Occasionally move spider to a random web point
+      if (Math.random() < 0.01) {
+        const randomIndex = Math.floor(Math.random() * gameState.webPoints.length);
+        const point = gameState.webPoints[randomIndex];
+        moveSpider(point.x, point.y);
+      }
+    }
+    
+    // Game loop
+    function gameLoop() {
+      updateSpiderPosition();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start the game
+    window.onload = init;
+  </script>
+</body>
+</html>
