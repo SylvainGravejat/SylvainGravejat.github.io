@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src='WebAudioFontPlayer.js'></script>
+	<script src='MIDIFile.js'></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        #game-container {
+            position: relative;
+            width: 500px;
+            height: 700px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+        #note-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+        }
+        #piano-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 147px;
+        }
+        #cntls {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        #controls-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+	<div id="cntls">
+		<p><input type="file" id="filesinput" name="filesarr[]" /> Piano Hero v0.1</p>
+		<ul>
+			<li><a href='#' onclick='handleExample("midi/happy_birthday_to_you.mid")'>Happy birthday to you</a></li>
+			<li><a href='#' onclick='handleExample("midi/au_clair_de_la_lune.mid")'>Au clair de la lune</a></li>
+			<li><a href='#' onclick='handleExample("midi/george_michael_careless_whisper.mid")'>George Michael - Carless whisper</a></li>
+		</ul>
+	</div>
+    
+    <div id="game-container">
+        <canvas id="note-canvas"></canvas>
+        <div id="piano-container">
+            <canvas id="piano-canvas"></canvas>
+        </div>
+    </div>
+    
+    <div id="controls-container">
+        <div id="tmr"></div>
+        <div id="track-controls"></div>
+    </div>
+    
+	<script>
+		console.log('start');
+		var audioContext = null;
+		var player = null;
+		var reverberator = null;
+		var equalizer = null;
+		var songStart = 0;
+		var input = null;
+		var currentSongTime = 0;
+		var nextStepTime = 0;
+		var nextPositionTime = 0;
+		var loadedsong = null;
+        
+        // Game-specific variables
+        var noteCanvas = document.getElementById('note-canvas');
+        var noteCtx = null;
+        var pianoCanvas = document.getElementById('piano-canvas');
+        var pianoCtx = null;
+        var activeKeys = {};
+        var mainTrackNotes = []; // Store notes from the first track
+
+        // Map keyboard keys to piano keys
+        var keyMap = {
+            's': { index: 0, note: 60, isWhite: true }, // C4
+            'e': { index: 1, note: 61, isWhite: false }, // C#4
+            'd': { index: 2, note: 62, isWhite: true }, // D4
+            'r': { index: 3, note: 63, isWhite: false }, // D#4
+            'f': { index: 4, note: 64, isWhite: true }, // E4
+            'g': { index: 5, note: 65, isWhite: true }, // F4
+            'y': { index: 6, note: 66, isWhite: false }, // F#4
+            'h': { index: 7, note: 67, isWhite: true }, // G4
+            'u': { index: 8, note: 68, isWhite: false }, // G#4
+            'j': { index: 9, note: 69, isWhite: true }, // A4
+            'i': { index: 10, note: 70, isWhite: false }, // A#4
+            'k': { index: 11, note: 71, isWhite: true }  // B4
+        };
+
+        // Initialize canvases when window loads
+        window.onload = function() {
+            noteCtx = noteCanvas.getContext('2d');
+            pianoCtx = pianoCanvas.getContext('2d');
+            resizeCanvases();
+            drawPiano();
+            
+            // Add event listeners for window resize
+            window.addEventListener('resize', function() {
+                resizeCanvases();
+                drawPiano();
+            });
+            
+            // Add event listeners for keyboard
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            
+            document.getElementById('filesinput').addEventListener('change', handleFileSelect, false);
+        };
+        
+        // Resize canvases to match container sizes
+        function resizeCanvases() {
+            noteCanvas.width = noteCanvas.parentElement.clientWidth;
+            noteCanvas.height = noteCanvas.parentElement.clientHeight;
+            pianoCanvas.width = pianoCanvas.parentElement.clientWidth;
+            pianoCanvas.height = pianoCanvas.parentElement.clientHeight;
+        }
+        
+        // Draw the piano keyboard
+        function drawPiano() {
+            if (!pianoCtx) return;
+            
+            pianoCtx.clearRect(0, 0, pianoCanvas.width, pianoCanvas.height);
+            
+            // In a traditional piano layout, there are black keys between certain white keys
+            // C-D, D-E, F-G, G-A, A-B (but not between E-F and B-C)
+            
+            var whiteKeyCount = 7; // C, D, E, F, G, A, B
+            var whiteKeyWidth = pianoCanvas.width / whiteKeyCount;
+            var blackKeyWidth = whiteKeyWidth * 0.7;
+            var blackKeyHeight = pianoCanvas.height * 0.6;
+            
+            // Black key positions (realistic) - positioned between white keys
+            // The real piano pattern has 2 black keys, gap, 3 black keys, gap
+            var blackKeyPositions = [
+                whiteKeyWidth * 1,      // C#/Db (between C and D)
+                whiteKeyWidth * 2,      // D#/Eb (between D and E)
+                whiteKeyWidth * 4,      // F#/Gb (between F and G)
+                whiteKeyWidth * 5,      // G#/Ab (between G and A)
+                whiteKeyWidth * 6       // A#/Bb (between A and B)
+            ];
+
+            // Draw white keys
+            pianoCtx.fillStyle = '#ffffff';
+            pianoCtx.fillRect(0, 0, pianoCanvas.width, pianoCanvas.height);
+            
+            // Draw white key borders
+            for (var i = 0; i <= whiteKeyCount; i++) {
+                pianoCtx.beginPath();
+                pianoCtx.moveTo(i * whiteKeyWidth, 0);
+                pianoCtx.lineTo(i * whiteKeyWidth, pianoCanvas.height);
+                pianoCtx.strokeStyle = '#000000';
+                pianoCtx.lineWidth = 2;
+                pianoCtx.stroke();
+            }
+
+            // Highlight active white keys
+            highlightActiveWhiteKeys();
+
+            // Draw black keys
+            for (var i = 0; i < blackKeyPositions.length; i++) {
+                pianoCtx.fillStyle = '#000000';
+                pianoCtx.fillRect(blackKeyPositions[i] - blackKeyWidth/2, 0, blackKeyWidth, blackKeyHeight);
+            }
+
+            // Highlight active black keys
+            highlightActiveBlackKeys();
+
+            // Add key labels
+            pianoCtx.fillStyle = '#000000';
+            pianoCtx.font = '24px Arial';
+            pianoCtx.textAlign = 'center';
+            
+            // White key labels: S, D, F, G, H, J, K
+            var whiteKeyLabels = ['S', 'D', 'F', 'G', 'H', 'J', 'K'];
+            for (var i = 0; i < whiteKeyLabels.length; i++) {
+                pianoCtx.fillText(whiteKeyLabels[i], (i + 0.5) * whiteKeyWidth, pianoCanvas.height - 20);
+            }
+            
+            // Black key labels: E, R, Y, U, I
+            pianoCtx.fillStyle = '#ffffff';
+            var blackKeyLabels = ['E', 'R', 'Y', 'U', 'I'];
+            for (var i = 0; i < blackKeyLabels.length; i++) {
+                pianoCtx.fillText(blackKeyLabels[i], blackKeyPositions[i], blackKeyHeight - 20);
+            }
+        }
+
+        // Highlight currently pressed white keys
+        function highlightActiveWhiteKeys() {
+            if (!pianoCtx) return;
+            
+            var whiteKeyCount = 7;
+            var whiteKeyWidth = pianoCanvas.width / whiteKeyCount;
+
+            for (var key in activeKeys) {
+                if (activeKeys[key]) {
+                    var keyInfo = keyMap[key];
+                    if (keyInfo.isWhite) {
+                        // Highlight white key
+                        var whiteIndex = 0;
+                        for (var k in keyMap) {
+                            if (keyMap[k].isWhite && keyMap[k].index <= keyInfo.index) {
+                                whiteIndex++;
+                            }
+                        }
+                        whiteIndex--; // Adjust for 0-based index
+                        
+                        pianoCtx.fillStyle = '#87CEFA'; // Light blue
+                        pianoCtx.fillRect(whiteIndex * whiteKeyWidth + 2, 0, whiteKeyWidth - 4, pianoCanvas.height - 2);
+                    }
+                }
+            }
+        }
+
+        // Highlight currently pressed black keys
+        function highlightActiveBlackKeys() {
+            if (!pianoCtx) return;
+            
+            var whiteKeyCount = 7;
+            var whiteKeyWidth = pianoCanvas.width / whiteKeyCount;
+            var blackKeyWidth = whiteKeyWidth * 0.7;
+            var blackKeyHeight = pianoCanvas.height * 0.6;
+            
+            // Black key positions (realistic)
+            var blackKeyPositions = [
+                whiteKeyWidth * 1,      // C#/Db (between C and D)
+                whiteKeyWidth * 2,      // D#/Eb (between D and E)
+                whiteKeyWidth * 4,      // F#/Gb (between F and G)
+                whiteKeyWidth * 5,      // G#/Ab (between G and A)
+                whiteKeyWidth * 6       // A#/Bb (between A and B)
+            ];
+            
+            for (var key in activeKeys) {
+                if (activeKeys[key]) {
+                    var keyInfo = keyMap[key];
+                    if (!keyInfo.isWhite) {
+                        // Highlight black key
+                        var blackIndex;
+                        // Map key index values to black key indices
+                        if (keyInfo.index === 1) blackIndex = 0;      // C#/Db
+                        else if (keyInfo.index === 3) blackIndex = 1;  // D#/Eb
+                        else if (keyInfo.index === 6) blackIndex = 2;  // F#/Gb
+                        else if (keyInfo.index === 8) blackIndex = 3;  // G#/Ab
+                        else if (keyInfo.index === 10) blackIndex = 4;  // A#/Bb
+
+                        pianoCtx.fillStyle = '#4682B4'; // Steel blue
+                        pianoCtx.fillRect(blackKeyPositions[blackIndex] - blackKeyWidth/2, 0, blackKeyWidth, blackKeyHeight);
+                    }
+                }
+            }
+        }
+
+        // Handle key down event
+        function handleKeyDown(event) {
+            var key = event.key.toLowerCase();
+            
+            if (keyMap[key] && !activeKeys[key]) {
+                activeKeys[key] = true;
+                drawPiano();
+                
+                // Play the note if we have a song loaded
+                if (audioContext && loadedsong && loadedsong.tracks.length > 0) {
+                    var track = loadedsong.tracks[0]; // Use the first track's instrument
+                    var note = keyMap[key].note;
+                    var instr = track.info.variable;
+                    
+                    player.queueWaveTable(audioContext, input, window[instr], audioContext.currentTime, note, 0.5, 0.75);
+                }
+            }
+        }
+        
+        // Handle key up event
+        function handleKeyUp(event) {
+            var key = event.key.toLowerCase();
+            
+            if (keyMap[key]) {
+                activeKeys[key] = false;
+                drawPiano();
+            }
+        }
+        
+// Draw note bars falling from top to bottom
+function drawNoteBars() {
+    if (!noteCtx || !loadedsong) return;
+    
+    noteCtx.clearRect(0, 0, noteCanvas.width, noteCanvas.height);
+    
+    var whiteKeyCount = 7;
+    var whiteKeyWidth = pianoCanvas.width / whiteKeyCount;
+    var blackKeyWidth = whiteKeyWidth * 0.6;
+    var blackKeyPositions = [1, 2, 4, 5, 6];
+    
+    var currentTime = audioContext.currentTime - songStart;
+    var lookAheadTime = 8; // Show 4 seconds of notes ahead
+    
+    // Draw a horizontal "now" line
+    var playLineY = noteCanvas.height - 150;
+    noteCtx.fillStyle = '#ff0000';
+    noteCtx.fillRect(0, playLineY, noteCanvas.width, 3);
+    
+    // Calculate pixels per second for time scaling
+    var pixelsPerSecond = (playLineY) / lookAheadTime;
+
+	// Next note to play for each keyboard key
+	var firstNote = new Array(12).fill(true);
+
+    // Draw note bars
+    for (var i = 0; i < mainTrackNotes.length; i++) {
+        var note = mainTrackNotes[i];
+        
+        // Calculate note end time
+        var noteEndTime = note.when + note.duration;
+        
+        // Only draw notes that are at least partially visible in our time window
+        if ((note.when <= currentTime + lookAheadTime && noteEndTime >= currentTime)) {
+            
+            // Calculate start vertical position (bottom of the note)
+            var startY = playLineY-1;
+            if (note.when >= currentTime) {
+                // Note starts in the visible window
+                startY = playLineY - ((note.when - currentTime) * pixelsPerSecond);
+            }
+            
+            // Calculate end vertical position (top of the note)
+            var endY = 0; // Top of visible window
+            if (noteEndTime <= currentTime + lookAheadTime) {
+                // Note ends in the visible window
+                endY = playLineY - ((noteEndTime - currentTime) * pixelsPerSecond);
+            }
+            
+            // Get MIDI note number and map to keyboard
+            var midiNote = note.pitch % 12; // Normalize to one octave (C=0, C#=1, etc.)
+            var octaveOffset = Math.floor(note.pitch / 12) - 5; // Adjust for octave
+
+			// Map the keyboard keys to the octave of the next note
+			if (firstNote[midiNote] === true) {
+				firstNote[midiNote] = false;
+				
+				// var octaveOffset = Math.floor(note.pitch / 12) - 5;
+
+				let keyToUpdate = Object.values(keyMap).find(key => key.index === midiNote);
+				if (keyToUpdate) {
+					keyToUpdate.note = note.pitch;
+				}
+
+			}
+
+            // Determine if it's a white or black key
+            var isBlack = (midiNote === 1 || midiNote === 3 || midiNote === 6 || midiNote === 8 || midiNote === 10);
+            
+            var x, width;
+            if (!isBlack) {
+                // White key
+                var whiteKeyIndex;
+                if (midiNote === 0) whiteKeyIndex = 0; // C
+                else if (midiNote === 2) whiteKeyIndex = 1; // D
+                else if (midiNote === 4) whiteKeyIndex = 2; // E
+                else if (midiNote === 5) whiteKeyIndex = 3; // F
+                else if (midiNote === 7) whiteKeyIndex = 4; // G
+                else if (midiNote === 9) whiteKeyIndex = 5; // A
+                else if (midiNote === 11) whiteKeyIndex = 6; // B
+                
+                x = whiteKeyIndex * whiteKeyWidth;
+                width = whiteKeyWidth;
+            } else {
+                // Black key
+                var blackKeyIndex;
+                if (midiNote === 1) blackKeyIndex = 0; // C#
+                else if (midiNote === 3) blackKeyIndex = 1; // D#
+                else if (midiNote === 6) blackKeyIndex = 2; // F#
+                else if (midiNote === 8) blackKeyIndex = 3; // G#
+                else if (midiNote === 10) blackKeyIndex = 4; // A#
+                
+                x = blackKeyPositions[blackKeyIndex] * whiteKeyWidth - blackKeyWidth / 2;
+                width = blackKeyWidth;
+            }
+            
+            // Adjust for different octaves
+            //x += octaveOffset * whiteKeyWidth * whiteKeyCount;
+            
+            // Calculate the height of the note bar based on its duration
+            var height = startY - endY;
+            
+            // Draw the note bar
+            noteCtx.fillStyle = isBlack ? '#444444' : '#CCCCCC';
+            noteCtx.fillRect(x, endY, width, height);
+            noteCtx.strokeStyle = '#000000';
+            noteCtx.strokeRect(x, endY, width, height);
+        }
+    }
+    
+    // Request the next animation frame
+    requestAnimationFrame(drawNoteBars);
+}
+        
+		function go() {
+			document.getElementById('tmr').innerHTML = 'starting...';
+			try {
+				startPlay(loadedsong);
+				document.getElementById('tmr').innerHTML = 'playing...';
+                // Start drawing note bars
+                drawNoteBars();
+			} catch (expt) {
+				document.getElementById('tmr').innerHTML = 'error ' + expt;
+			}
+		}
+        
+		function startPlay(song) {
+			currentSongTime = 0;
+			songStart = audioContext.currentTime;
+			nextStepTime = audioContext.currentTime;
+			var stepDuration = 44 / 1000;
+			tick(song, stepDuration);
+		}
+        
+		function tick(song, stepDuration) {
+			if (audioContext.currentTime > nextStepTime - stepDuration) {
+				sendNotes(song, songStart, currentSongTime, currentSongTime + stepDuration, audioContext, input, player);
+				currentSongTime = currentSongTime + stepDuration;
+				nextStepTime = nextStepTime + stepDuration;
+				if (currentSongTime > song.duration) {
+					currentSongTime = currentSongTime - song.duration;
+					sendNotes(song, songStart, 0, currentSongTime, audioContext, input, player);
+					songStart = songStart + song.duration;
+				}
+			}
+			if (nextPositionTime < audioContext.currentTime) {
+				var o = document.getElementById('position');
+				if (o) {
+                    o.value = 100 * currentSongTime / song.duration;
+                }
+				document.getElementById('tmr').innerHTML = '' + Math.round(100 * currentSongTime / song.duration) + '%';
+				nextPositionTime = audioContext.currentTime + 3;
+			}
+			window.requestAnimationFrame(function (t) {
+				tick(song, stepDuration);
+			});
+		}
+        
+		function sendNotes(song, songStart, start, end, audioContext, input, player) {
+			for (var t = 0; t < song.tracks.length; t++) {
+                // Skip the first track (player's track)
+                if (t === 0) continue;
+                
+				var track = song.tracks[t];
+				for (var i = 0; i < track.notes.length; i++) {
+					if (track.notes[i].when >= start && track.notes[i].when < end) {
+						var when = songStart + track.notes[i].when;
+						var duration = track.notes[i].duration;
+						if (duration > 3) {
+							duration = 3;
+						}
+						var instr = track.info.variable;
+						var v = track.volume / 7;
+						player.queueWaveTable(audioContext, input, window[instr], when, track.notes[i].pitch, duration, v, track.notes[i].slides);
+					}
+				}
+			}
+			for (var b = 0; b < song.beats.length; b++) {
+				var beat = song.beats[b];
+				for (var i = 0; i < beat.notes.length; i++) {
+					if (beat.notes[i].when >= start && beat.notes[i].when < end) {
+						var when = songStart + beat.notes[i].when;
+						var duration = 1.5;
+						var instr = beat.info.variable;
+						var v = beat.volume / 2;
+						player.queueWaveTable(audioContext, input, window[instr], when, beat.n, duration, v);
+					}
+				}
+			}
+		}
+        
+		function startLoad(song) {
+			console.log(song);
+			var AudioContextFunc = window.AudioContext || window.webkitAudioContext;
+			audioContext = new AudioContextFunc();
+			player = new WebAudioFontPlayer();
+
+			equalizer = player.createChannel(audioContext);
+			reverberator = player.createReverberator(audioContext);
+			input = equalizer.input;
+			equalizer.output.connect(reverberator.input);
+			reverberator.output.connect(audioContext.destination);
+
+            // Extract notes from the first track
+            mainTrackNotes = song.tracks[0].notes;
+            console.log("Main track notes:", mainTrackNotes);
+            
+            // Set the volume of the first track to 0 (player will play it)
+            song.tracks[0].volume = 0;
+            
+			for (var i = 0; i < song.tracks.length; i++) {
+				var nn = player.loader.findInstrument(song.tracks[i].program);
+				var info = player.loader.instrumentInfo(nn);
+				song.tracks[i].info = info;
+				song.tracks[i].id = nn;
+				player.loader.startLoad(audioContext, info.url, info.variable);
+			}
+			for (var i = 0; i < song.beats.length; i++) {
+				var nn = player.loader.findDrum(song.beats[i].n);
+				var info = player.loader.drumInfo(nn);
+				song.beats[i].info = info;
+				song.beats[i].id = nn;
+				player.loader.startLoad(audioContext, info.url, info.variable);
+			}
+			player.loader.waitLoad(function () {
+				console.log('buildControls');
+				buildControls(song);
+				resetEqualizer();
+			});
+		}
+        
+		function resetEqualizer(){
+			equalizer.band32.gain.setTargetAtTime(2,0,0.0001);
+			equalizer.band64.gain.setTargetAtTime(2,0,0.0001);
+			equalizer.band128.gain.setTargetAtTime(1,0,0.0001);
+			equalizer.band256.gain.setTargetAtTime(0,0,0.0001);
+			equalizer.band512.gain.setTargetAtTime(-1,0,0.0001);
+			equalizer.band1k.gain.setTargetAtTime(5,0,0.0001);
+			equalizer.band2k.gain.setTargetAtTime(4,0,0.0001);
+			equalizer.band4k.gain.setTargetAtTime(3,0,0.0001);
+			equalizer.band8k.gain.setTargetAtTime(-2,0,0.0001);
+			equalizer.band16k.gain.setTargetAtTime(2,0,0.0001);
+		}
+        
+		function buildControls(song) {
+			audioContext.resume();
+			
+            // Add play button and position slider
+            var controlsHtml = '<div><button id="play-button" onclick="go();">Play</button></div>';
+            controlsHtml += '<div><input id="position" type="range" min="0" max="100" value="0" step="1" /></div>';
+            document.getElementById('tmr').innerHTML = controlsHtml;
+            
+            // Create track volume controls
+            var trackControlsHtml = '<h3>Background Tracks</h3>';
+            for (var i = 0; i < song.tracks.length; i++) {
+                var v = 100 * song.tracks[i].volume;
+                // Disable slider for first track (the player's track)
+                var disabled = i === 0 ? 'disabled' : '';
+                trackControlsHtml += '<div>' + chooserIns(song.tracks[i].id, i) +
+                    '<input id="channel' + i + '" type="range" min="0" max="100" value="' + v + 
+                    '" step="1" ' + disabled + ' /></div>';
+            }
+            
+            // Add drum controls if any exist
+            if (song.beats.length > 0) {
+                trackControlsHtml += '<h3>Drums</h3>';
+                for (var i = 0; i < song.beats.length; i++) {
+                    var v = 100 * song.beats[i].volume;
+                    trackControlsHtml += '<div>' + chooserDrum(song.beats[i].id, i) +
+                        '<input id="drum' + i + '" type="range" min="0" max="100" value="' + v + 
+                        '" step="1" /></div>';
+                }
+            }
+            
+            document.getElementById('track-controls').innerHTML = trackControlsHtml;
+			
+            // Set up position slider
+			var pos = document.getElementById('position');
+			if (pos) {
+                pos.oninput = function (e) {
+                    if (loadedsong) {
+                        player.cancelQueue(audioContext);
+                        var next = song.duration * pos.value / 100;
+                        songStart = songStart - (next - currentSongTime);
+                        currentSongTime = next;
+                    }
+                };
+            }
+			
+            // Set up track volume controls
+			for (var i = 0; i < song.tracks.length; i++) {
+				setVolumeAction(i, song);
+			}
+			
+            // Set up drum volume controls
+			for (var i = 0; i < song.beats.length; i++) {
+				setDrVolAction(i, song);
+			}
+			
+            loadedsong = song;
+            
+            // Initialize and resize canvas now that we have a song
+            resizeCanvases();
+            drawPiano();
+		}
+        
+		function setVolumeAction(i, song) {
+			var vlm = document.getElementById('channel' + i);
+            if (!vlm) return;
+            
+			vlm.oninput = function (e) {
+				player.cancelQueue(audioContext);
+				var v = vlm.value / 100;
+				if (v < 0.000001) {
+					v = 0.000001;
+				}
+				song.tracks[i].volume = v;
+			};
+			var sl = document.getElementById('selins' + i);
+            if (!sl) return;
+            
+			sl.onchange = function (e) {
+				var nn = sl.value;
+				var info = player.loader.instrumentInfo(nn);
+				player.loader.startLoad(audioContext, info.url, info.variable);
+				player.loader.waitLoad(function () {
+					console.log('loaded');
+					song.tracks[i].info = info;
+					song.tracks[i].id = nn;
+				});
+			};
+		}
+        
+		function setDrVolAction(i, song) {
+			var vlm = document.getElementById('drum' + i);
+            if (!vlm) return;
+            
+			vlm.oninput = function (e) {
+				player.cancelQueue(audioContext);
+				var v = vlm.value / 100;
+				if (v < 0.000001) {
+					v = 0.000001;
+				}
+				song.beats[i].volume = v;
+			};
+			var sl = document.getElementById('seldrm' + i);
+            if (!sl) return;
+            
+			sl.onchange = function (e) {
+				var nn = sl.value;
+				var info = player.loader.drumInfo(nn);
+				player.loader.startLoad(audioContext, info.url, info.variable);
+				player.loader.waitLoad(function () {
+					console.log('loaded');
+					song.beats[i].info = info;
+					song.beats[i].id = nn;
+				});
+			};
+		}
+        
+		function chooserIns(n, track) {
+			var html = '<select id="selins' + track + '">';
+			for (var i = 0; i < player.loader.instrumentKeys().length; i++) {
+				var sel = '';
+				if (i == n) {
+					sel = ' selected';
+				}
+				html = html + '<option value="' + i + '"' + sel + '>' + i + ': ' + player.loader.instrumentInfo(i).title + '</option>';
+			}
+			html = html + '</select>';
+			return html;
+		}
+        
+		function chooserDrum(n, beat) {
+			var html = '<select id="seldrm' + beat + '">';
+			for (var i = 0; i < player.loader.drumKeys().length; i++) {
+				var sel = '';
+				if (i == n) {
+					sel = ' selected';
+				}
+				html = html + '<option value="' + i + '"' + sel + '>' + i + ': ' + player.loader.drumInfo(i).title + '</option>';
+			}
+			html = html + '</select>';
+			return html;
+		}
+        
+		function handleFileSelect(event) {
+			console.log(event);
+			var file = event.target.files[0];
+			console.log(file);
+			var fileReader = new FileReader();
+			fileReader.onload = function (progressEvent) {
+				console.log(progressEvent);
+				var arrayBuffer = progressEvent.target.result;
+				console.log(arrayBuffer);
+				var midiFile = new MIDIFile(arrayBuffer);
+				var song = midiFile.parseSong();
+				startLoad(song);
+			};
+			fileReader.readAsArrayBuffer(file);
+		}
+
+		function handleExample(path) {
+			console.log(path);
+			var xmlHttpRequest = new XMLHttpRequest();
+			xmlHttpRequest.open("GET", path, true);
+			xmlHttpRequest.responseType = "arraybuffer";
+			xmlHttpRequest.onload = function (e) {
+				var arrayBuffer = xmlHttpRequest.response;
+				var midiFile = new MIDIFile(arrayBuffer);
+				var song = midiFile.parseSong();
+				startLoad(song);
+			};
+			xmlHttpRequest.send(null);
+		}
+
+	</script>
+</body>
+</html>
